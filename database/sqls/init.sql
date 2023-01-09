@@ -5,7 +5,7 @@ create table GeoPhoto.photo
 (
     id          int UNSIGNED auto_increment,
     user_id     int UNSIGNED                        not null,
-    photo_url    text                                not null,
+    photo_url   text                                not null,
     description text                                null,
     timestamp   timestamp default current_timestamp not null,
     coordinates point                               not null,
