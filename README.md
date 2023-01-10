@@ -8,5 +8,6 @@
   ```sh
   git clone https://github.com/cch-shape/geophoto-backend.git
   cd geophoto-backend
+  mv .env.sample .env
   docker-compose up -d --build
   ```
