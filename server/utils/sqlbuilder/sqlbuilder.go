@@ -24,6 +24,8 @@ func Select(model interface{}, tableName string, attachStmt ...string) string {
 		} else if colName, exist := t.Field(i).Tag.Lookup("db_cal"); exist {
 			stmt.WriteString(delim)
 			stmt.WriteString(stringResolveEnv(colName))
+			stmt.WriteByte(' ')
+			stmt.WriteString(strings.ToLower(t.Field(i).Name))
 			delim = ", "
 		}
 	}
@@ -69,6 +71,8 @@ func Insert(model interface{}, tableName string, attachStmt ...string) string {
 		} else if colName, exist := t.Field(i).Tag.Lookup("db_cal"); exist {
 			rtBuilder.WriteString(delim)
 			rtBuilder.WriteString(stringResolveEnv(colName))
+			rtBuilder.WriteByte(' ')
+			rtBuilder.WriteString(strings.ToLower(t.Field(i).Name))
 			delim = ", "
 		}
 	}
@@ -132,6 +136,8 @@ func Replace(model interface{}, tableName string, attachStmt ...string) string {
 		} else if colName, exist := t.Field(i).Tag.Lookup("db_cal"); exist {
 			rtBuilder.WriteString(delim)
 			rtBuilder.WriteString(stringResolveEnv(colName))
+			rtBuilder.WriteByte(' ')
+			rtBuilder.WriteString(strings.ToLower(t.Field(i).Name))
 			delim = ", "
 		}
 	}

@@ -24,7 +24,7 @@ func CreatePhoto(c *fiber.Ctx) error {
 	if file, err = c.FormFile("file"); err != nil {
 		return err
 	}
-	photo.FileExtension = filepath.Ext(file.Filename)
+	photo.FileName = file.Filename
 	if err := photo.ScanBody(c); err != nil {
 		return err
 	}
@@ -43,11 +43,9 @@ func CreatePhoto(c *fiber.Ctx) error {
 		}
 	}
 
-	if err := c.SaveFile(file, filepath.Join(
-		".",
-		os.Getenv("IMAGE_PATH"),
-		photo.Id+photo.FileExtension,
-	)); err != nil {
+	dir := filepath.Join(".", os.Getenv("IMAGE_PATH"), photo.Id)
+	os.MkdirAll(dir, os.ModePerm)
+	if err := c.SaveFile(file, filepath.Join(dir, file.Filename)); err != nil {
 		return err
 	}
 
@@ -71,6 +69,7 @@ func GetAllPhotos(c *fiber.Ctx) error {
 	var photos []model.Photo
 
 	stmt := sqlbuilder.Select(&photos, tableNames["Photo"])
+	log.Println(stmt)
 	if err := database.Cursor.Select(&photos, stmt); err != nil {
 		return err
 	}
@@ -88,7 +87,7 @@ func UpdatePhoto(c *fiber.Ctx) error {
 	var err error
 	var file *multipart.FileHeader
 	if file, err = c.FormFile("file"); err == nil {
-		photo.FileExtension = filepath.Ext(file.Filename)
+		photo.FileName = file.Filename
 	}
 
 	stmt := sqlbuilder.Replace(photo, tableNames["Photo"], "coordinates", "Point(:latitude,:longitude)")
@@ -107,11 +106,10 @@ func UpdatePhoto(c *fiber.Ctx) error {
 	}
 
 	if file != nil {
-		if err := c.SaveFile(file, filepath.Join(
-			".",
-			os.Getenv("IMAGE_PATH"),
-			photo.Id+photo.FileExtension,
-		)); err != nil {
+		dir := filepath.Join(".", os.Getenv("IMAGE_PATH"), photo.Id)
+		os.RemoveAll(dir)
+		os.MkdirAll(dir, os.ModePerm)
+		if err := c.SaveFile(file, filepath.Join(dir, file.Filename)); err != nil {
 			return err
 		}
 	}
@@ -136,6 +134,10 @@ func DeletePhoto(c *fiber.Ctx) error {
 	if rowsDeleted, err := result.RowsAffected(); rowsDeleted == 0 || err != nil {
 		return response.NotFound(c)
 	}
-
+	os.RemoveAll(filepath.Join(
+		".",
+		os.Getenv("IMAGE_PATH"),
+		id,
+	))
 	return response.RecordDeleted(c)
 }
