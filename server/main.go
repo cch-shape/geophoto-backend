@@ -2,6 +2,7 @@ package main
 
 import (
 	"geophoto/backend/database"
+	"geophoto/backend/middleware"
 	"geophoto/backend/router"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -11,7 +12,9 @@ import (
 )
 
 func main() {
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ErrorHandler: middleware.ErrorHandler,
+	})
 	app.Use(cors.New())
 
 	database.Connect()

@@ -17,3 +17,6 @@ server/tmp
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# static files
+**/static/image/*
