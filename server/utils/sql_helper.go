@@ -5,15 +5,25 @@ import (
 	"strings"
 )
 
-func SelectStmt(model interface{}, tableName string) string {
-	stmt := "SELECT "
+func SelectStmt(model interface{}, tableName string, attachStmt ...*string) string {
 	t := reflect.TypeOf(model)
 	for t.Kind() == reflect.Slice || t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
-	delim := ", "
+
+	var stmt strings.Builder
+	stmt.WriteString("SELECT ")
+	delim := ""
 	for i := 0; i < t.NumField(); i++ {
-		stmt += t.Field(i).Tag.Get("db") + delim
+		stmt.WriteString(delim)
+		stmt.WriteString(t.Field(i).Tag.Get("db"))
+		delim = ", "
 	}
-	return strings.TrimSuffix(stmt, delim) + " FROM `" + tableName + "`"
+	stmt.WriteString(" FROM `")
+	stmt.WriteString(tableName)
+	stmt.WriteByte('`')
+	for i := 0; i < len(attachStmt); i++ {
+		stmt.WriteString(*attachStmt[i])
+	}
+	return stmt.String()
 }
