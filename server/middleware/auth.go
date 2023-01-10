@@ -8,7 +8,7 @@ import (
 
 func Protected() fiber.Handler {
 	return jwt.New(jwt.Config{
-		SigningKey:   []byte(os.Getenv("SECRET")),
+		SigningKey:   []byte(os.Getenv("JWT_SECRET")),
 		ErrorHandler: jwtError,
 	})
 }

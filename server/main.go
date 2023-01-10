@@ -14,8 +14,8 @@ func main() {
 	app := fiber.New()
 	app.Use(cors.New())
 
-	database.ConnectDB()
+	database.Connect()
 
 	router.SetupRoutes(app)
-	log.Fatal(app.Listen(":" + os.Getenv("PORT")))
+	log.Fatal(app.Listen(":" + os.Getenv("SERVER_PORT")))
 }

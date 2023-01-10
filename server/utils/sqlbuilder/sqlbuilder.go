@@ -1,11 +1,11 @@
-package utils
+package sqlbuilder
 
 import (
 	"reflect"
 	"strings"
 )
 
-func SelectStmt(model interface{}, tableName string, attachStmt ...*string) string {
+func Select(model interface{}, tableName string, attachStmt ...string) string {
 	t := reflect.TypeOf(model)
 	for t.Kind() == reflect.Slice || t.Kind() == reflect.Ptr {
 		t = t.Elem()
@@ -23,7 +23,7 @@ func SelectStmt(model interface{}, tableName string, attachStmt ...*string) stri
 	stmt.WriteString(tableName)
 	stmt.WriteByte('`')
 	for i := 0; i < len(attachStmt); i++ {
-		stmt.WriteString(*attachStmt[i])
+		stmt.WriteString(attachStmt[i])
 	}
 	return stmt.String()
 }

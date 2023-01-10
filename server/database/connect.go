@@ -8,9 +8,9 @@ import (
 	"os"
 )
 
-func ConnectDB() {
+func Connect() {
 	var err error
-	DB, err = sqlx.Connect("mysql",
+	Cursor, err = sqlx.Connect("mysql",
 		fmt.Sprintf(
 			"%s:%s@(%s:%s)/%s?parseTime=true",
 			os.Getenv("DB_USER"),

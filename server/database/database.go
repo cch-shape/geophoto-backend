@@ -5,8 +5,8 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-var DB *sqlx.DB
+var Cursor *sqlx.DB
 
-var TableName = map[string]string{
+var TableNames = map[string]string{
 	"Photo": "photo",
 }
