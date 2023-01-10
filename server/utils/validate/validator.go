@@ -30,7 +30,8 @@ func Struct(model interface{}) []*map[string]interface{} {
 				"tag":          err.Tag(),
 			}
 			if len(err.Param()) != 0 {
-				el["value"] = err.Param()
+				el["expected"] = err.Param()
+				el["actual"] = err.Value()
 			}
 			errors = append(errors, &el)
 		}
