@@ -22,7 +22,7 @@ type Photo struct {
 	UserId      uint    `db:"user_id" json:"user_id"`
 	FileName    string  `db:"filename" db_prop:"auto" json:"filename"`
 	PhotoUrl    string  `db_cal:"CONCAT('${IMAGE_PATH}/',uuid,'/',filename)" json:"photo_url"`
-	Description *string `db:"description" json:"description"`
+	Description *string `db:"description" json:"description" validate:"len=300"`
 	Latitude    float64 `db_cal:"X(coordinates)" json:"latitude" validate:"required,number"`
 	Longitude   float64 `db_cal:"Y(coordinates)" json:"longitude" validate:"required,number"`
 	Timestamp   string  `db:"timestamp" json:"timestamp" validate:"required,datetime=2006-01-02T15:04:05.000Z"`
