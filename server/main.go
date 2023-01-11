@@ -4,6 +4,7 @@ import (
 	"geophoto/backend/database"
 	"geophoto/backend/middleware"
 	"geophoto/backend/router"
+	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	_ "github.com/joho/godotenv/autoload"
@@ -13,6 +14,8 @@ import (
 
 func main() {
 	app := fiber.New(fiber.Config{
+		JSONEncoder:  json.Marshal,
+		JSONDecoder:  json.Unmarshal,
 		ErrorHandler: middleware.ErrorHandler,
 	})
 	app.Use(cors.New())
