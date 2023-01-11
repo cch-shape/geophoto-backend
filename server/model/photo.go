@@ -8,7 +8,7 @@ import (
 )
 
 type Photo struct {
-	Id          string  `db:"id" db_prop:"auto" pk:"1" json:"id"`
+	//Id          string  `db:"id" db_prop:"auto" json:"id"`
 	UUID        string  `db:"uuid" db_prop:"key" json:"uuid"`
 	UserId      uint    `db:"user_id" json:"user_id"`
 	FileName    string  `db:"filename" db_prop:"auto" json:"filename"`
