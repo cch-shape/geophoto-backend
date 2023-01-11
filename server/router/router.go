@@ -23,7 +23,7 @@ func SetupRoutes(app *fiber.App) {
 	photo := api.Group("/photo")
 	photo.Post("/", handler.CreatePhoto)
 	photo.Get("/", handler.GetAllPhotos)
-	photo.Get("/:id", handler.GetPhoto)
-	photo.Put("/:id", handler.UpdatePhoto)
-	photo.Delete("/:id", handler.DeletePhoto)
+	photo.Get("/:uuid", handler.GetPhoto)
+	photo.Put("/:uuid", handler.UpdatePhoto)
+	photo.Delete("/:uuid", handler.DeletePhoto)
 }

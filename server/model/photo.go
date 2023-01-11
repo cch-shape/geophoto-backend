@@ -8,10 +8,11 @@ import (
 )
 
 type Photo struct {
-	Id          string  `db:"id" pk:"1" json:"id"`
+	Id          string  `db:"id" db_prop:"auto" pk:"1" json:"id"`
+	UUID        string  `db:"uuid" db_prop:"key" json:"uuid"`
 	UserId      uint    `db:"user_id" json:"user_id"`
-	FileName    string  `db:"filename" json:"filename"`
-	PhotoUrl    string  `db_cal:"CONCAT('${IMAGE_PATH}/',id,'/',filename)" json:"photo_url"`
+	FileName    string  `db:"filename" db_prop:"auto" json:"filename"`
+	PhotoUrl    string  `db_cal:"CONCAT('${IMAGE_PATH}/',uuid,'/',filename)" json:"photo_url"`
 	Description *string `db:"description" json:"description"`
 	Latitude    float64 `db_cal:"X(coordinates)" json:"latitude" validate:"required,number"`
 	Longitude   float64 `db_cal:"Y(coordinates)" json:"longitude" validate:"required,number"`
@@ -30,8 +31,8 @@ func (photo *Photo) ScanBody(c *fiber.Ctx) error {
 	if err = c.BodyParser(photo); err != nil {
 		return err
 	}
-	if id := c.Params("id"); len(id) != 0 {
-		photo.Id = id
+	if uuid := c.Params("uuid"); len(uuid) != 0 {
+		photo.UUID = uuid
 	}
 	photo.UserId = 0 /* Read user_id from jwt, to be completed */
 

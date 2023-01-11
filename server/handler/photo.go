@@ -17,23 +17,28 @@ import (
 var tableNames = database.TableNames
 
 func CreatePhoto(c *fiber.Ctx) error {
-	photo := new(model.Photo)
+	var photo model.Photo
 
 	var file *multipart.FileHeader
 	var err error
 	if file, err = c.FormFile("file"); err != nil {
 		return err
 	}
-	photo.FileName = file.Filename
-	if err := photo.ScanBody(c); err != nil {
+	if err := (&photo).ScanBody(c); err != nil {
 		return err
 	}
+	photo.FileName = file.Filename
 
-	stmt := sqlbuilder.Insert(photo, tableNames["Photo"], "coordinates", "Point(:latitude,:longitude)")
+	stmt := sqlbuilder.Insert(
+		&photo,
+		tableNames["Photo"],
+		"coordinates, filename",
+		"Point(:latitude,:longitude), :filename",
+	)
 
 	tx := database.Cursor.MustBegin()
 	defer tx.Rollback()
-	if rows, err := tx.NamedQuery(stmt, photo); err != nil {
+	if rows, err := tx.NamedQuery(stmt, &photo); err != nil {
 		return err
 	} else {
 		defer rows.Close()
@@ -43,7 +48,7 @@ func CreatePhoto(c *fiber.Ctx) error {
 		}
 	}
 
-	dir := filepath.Join(".", os.Getenv("IMAGE_PATH"), photo.Id)
+	dir := filepath.Join(".", os.Getenv("IMAGE_PATH"), photo.UUID)
 	os.MkdirAll(dir, os.ModePerm)
 	if err := c.SaveFile(file, filepath.Join(dir, file.Filename)); err != nil {
 		return err
@@ -56,9 +61,10 @@ func CreatePhoto(c *fiber.Ctx) error {
 
 func GetPhoto(c *fiber.Ctx) error {
 	var photo model.Photo
+	uuid := c.Params("uuid")
 
-	stmt := sqlbuilder.Select(&photo, tableNames["Photo"], "WHERE id=?")
-	if err := database.Cursor.Get(&photo, stmt, c.Params("id")); err != nil {
+	stmt := sqlbuilder.Select(&photo, tableNames["Photo"], "WHERE uuid=?")
+	if err := database.Cursor.Get(&photo, stmt, uuid); err != nil {
 		return err
 	}
 
@@ -68,8 +74,7 @@ func GetPhoto(c *fiber.Ctx) error {
 func GetAllPhotos(c *fiber.Ctx) error {
 	var photos []model.Photo
 
-	stmt := sqlbuilder.Select(&photos, tableNames["Photo"])
-	log.Println(stmt)
+	stmt := sqlbuilder.Select(&photos, tableNames["Photo"], "ORDER BY id DESC")
 	if err := database.Cursor.Select(&photos, stmt); err != nil {
 		return err
 	}
@@ -78,35 +83,29 @@ func GetAllPhotos(c *fiber.Ctx) error {
 }
 
 func UpdatePhoto(c *fiber.Ctx) error {
-	photo := new(model.Photo)
+	var photo model.Photo
 
-	if err := photo.ScanBody(c); err != nil {
+	if err := (&photo).ScanBody(c); err != nil {
 		return err
 	}
 
-	var err error
-	var file *multipart.FileHeader
-	if file, err = c.FormFile("file"); err == nil {
-		photo.FileName = file.Filename
-	}
+	file, _ := c.FormFile("file")
 
-	stmt := sqlbuilder.Replace(photo, tableNames["Photo"], "coordinates", "Point(:latitude,:longitude)")
+	stmt := sqlbuilder.Update(&photo, tableNames["Photo"], "coordinates=Point(:latitude,:longitude)")
 	tx := database.Cursor.MustBegin()
 	defer tx.Rollback()
-	if rows, err := tx.NamedQuery(stmt, photo); err != nil {
+	if _, err := tx.NamedExec(stmt, &photo); err != nil {
 		return err
-	} else {
-		defer rows.Close()
-		if !rows.Next() {
-			return response.NotFound(c)
-		}
-		if err = rows.StructScan(&photo); err != nil {
-			log.Println(err)
-		}
 	}
 
 	if file != nil {
-		dir := filepath.Join(".", os.Getenv("IMAGE_PATH"), photo.Id)
+		photo.FileName = file.Filename
+		stmt = fmt.Sprintf("UPDATE `%s` SET filename=:filename WHERE uuid=:uuid", tableNames["Photo"])
+		if _, err := tx.NamedExec(stmt, &photo); err != nil {
+			return err
+		}
+		log.Println(stmt)
+		dir := filepath.Join(".", os.Getenv("IMAGE_PATH"), photo.UUID)
 		os.RemoveAll(dir)
 		os.MkdirAll(dir, os.ModePerm)
 		if err := c.SaveFile(file, filepath.Join(dir, file.Filename)); err != nil {
@@ -116,17 +115,22 @@ func UpdatePhoto(c *fiber.Ctx) error {
 
 	tx.Commit()
 
-	return response.RecordCreated(c, photo)
+	stmt = sqlbuilder.Select(&photo, tableNames["Photo"], "WHERE uuid=?")
+	if err := database.Cursor.Get(&photo, stmt, photo.UUID); err != nil {
+		return err
+	}
+
+	return response.RecordUpdated(c, photo)
 }
 
 func DeletePhoto(c *fiber.Ctx) error {
 	var err error
-	id := c.Params("id")
+	uuid := c.Params("uuid")
 
 	var result sql.Result
 	if result, err = database.Cursor.Exec(
-		fmt.Sprintf("DELETE FROM %s WHERE id=?", tableNames["Photo"]),
-		id,
+		fmt.Sprintf("DELETE FROM `%s` WHERE uuid=?", tableNames["Photo"]),
+		uuid,
 	); err != nil {
 		return err
 	}
@@ -137,7 +141,7 @@ func DeletePhoto(c *fiber.Ctx) error {
 	os.RemoveAll(filepath.Join(
 		".",
 		os.Getenv("IMAGE_PATH"),
-		id,
+		uuid,
 	))
 	return response.RecordDeleted(c)
 }

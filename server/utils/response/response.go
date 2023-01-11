@@ -28,8 +28,8 @@ func RecordCreated(c *fiber.Ctx, data interface{}) error {
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"success": true, "message": "Record created", "data": data})
 }
 
-func RecordUpdated(c *fiber.Ctx) error {
-	return Message(c, "Record updated")
+func RecordUpdated(c *fiber.Ctx, data interface{}) error {
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"success": true, "message": "Record updated", "data": data})
 }
 
 func RecordDeleted(c *fiber.Ctx) error {
