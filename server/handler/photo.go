@@ -5,10 +5,7 @@ import (
 	"geophoto/backend/model"
 	"geophoto/backend/utils/response"
 	"github.com/gofiber/fiber/v2"
-	"log"
 	"mime/multipart"
-	"os"
-	"path/filepath"
 )
 
 var mPhoto model.Photo
@@ -28,23 +25,9 @@ func CreatePhoto(c *fiber.Ctx) error {
 
 	tx := database.Cursor.MustBegin()
 	defer tx.Rollback()
-	if rows, err := photo.Create(tx); err != nil {
-		return err
-	} else {
-		defer rows.Close()
-		rows.Next()
-		if err = rows.StructScan(&photo); err != nil {
-			log.Println(err)
-		}
-	}
-
-	dir := filepath.Join(".", os.Getenv("IMAGE_PATH"), photo.UUID)
-	os.MkdirAll(dir, os.ModePerm)
-	if err := c.SaveFile(file, filepath.Join(dir, file.Filename)); err != nil {
+	if err := photo.Create(tx, file); err != nil {
 		return err
 	}
-
-	tx.Commit()
 
 	return response.RecordCreated(c, photo)
 }
@@ -80,26 +63,7 @@ func UpdatePhoto(c *fiber.Ctx) error {
 
 	tx := database.Cursor.MustBegin()
 	defer tx.Rollback()
-	if _, err := photo.Update(tx); err != nil {
-		return err
-	}
-
-	if file != nil {
-		photo.FileName = file.Filename
-		if _, err := photo.UpdateFilename(tx); err != nil {
-			return err
-		}
-		dir := filepath.Join(".", os.Getenv("IMAGE_PATH"), photo.UUID)
-		os.RemoveAll(dir)
-		os.MkdirAll(dir, os.ModePerm)
-		if err := c.SaveFile(file, filepath.Join(dir, file.Filename)); err != nil {
-			return err
-		}
-	}
-
-	tx.Commit()
-
-	if err := photo.Get(); err != nil {
+	if err := photo.Update(tx, file); err != nil {
 		return err
 	}
 
@@ -117,10 +81,5 @@ func DeletePhoto(c *fiber.Ctx) error {
 		}
 	}
 
-	os.RemoveAll(filepath.Join(
-		".",
-		os.Getenv("IMAGE_PATH"),
-		photo.UUID,
-	))
 	return response.RecordDeleted(c)
 }
