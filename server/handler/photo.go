@@ -72,7 +72,7 @@ func GetAllPhotos(c *fiber.Ctx) error {
 func UpdatePhoto(c *fiber.Ctx) error {
 	var photo model.Photo
 
-	if err := (&photo).ScanBody(c); err != nil {
+	if err := photo.ScanBody(c); err != nil {
 		return err
 	}
 

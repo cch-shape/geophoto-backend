@@ -26,12 +26,7 @@ type Photo struct {
 
 type Photos []Photo
 
-type ErrorResponse struct {
-	FailedField string
-	Tag         string
-	Value       string
-}
-
+// ScanBody /* validate and map request data to model */
 func (photo *Photo) ScanBody(c *fiber.Ctx) error {
 	var err error
 	// Parser body
@@ -49,7 +44,7 @@ func (photo *Photo) ScanBody(c *fiber.Ctx) error {
 		return fiber.NewError(400, "validation failed")
 	}
 
-	// Data transform
+	// Transform
 	var ts *time.Time
 	if ts, err = utils.ISO8601StringToTime(photo.Timestamp); err != nil {
 		return err
@@ -59,6 +54,7 @@ func (photo *Photo) ScanBody(c *fiber.Ctx) error {
 	return nil
 }
 
+// Create
 var createStmt = sqlbuilder.Insert(
 	Photo{},
 	database.TableNames["Photo"],
@@ -70,6 +66,7 @@ func (photo *Photo) Create(tx *sqlx.Tx) (*sqlx.Rows, error) {
 	return tx.NamedQuery(createStmt, photo)
 }
 
+// Get
 var getStmt = sqlbuilder.Select(
 	Photo{},
 	database.TableNames["Photo"],
@@ -80,6 +77,7 @@ func (photo *Photo) Get() error {
 	return database.Cursor.Get(photo, getStmt, photo.UUID)
 }
 
+// Select
 var selectStmt = sqlbuilder.Select(
 	Photo{},
 	database.TableNames["Photo"],
@@ -90,6 +88,7 @@ func (photos *Photos) Select() error {
 	return database.Cursor.Select(photos, selectStmt)
 }
 
+// Update
 var updateStmt = sqlbuilder.Update(
 	Photo{},
 	database.TableNames["Photo"],
@@ -109,6 +108,7 @@ func (photo *Photo) UpdateFilename(tx *sqlx.Tx) (sql.Result, error) {
 	return tx.NamedExec(updateFilenameStmt, photo)
 }
 
+// Delete
 var deleteStmt = fmt.Sprintf("DELETE FROM `%s` WHERE uuid=?", database.TableNames["Photo"])
 
 func (photo *Photo) Delete() (sql.Result, error) {
