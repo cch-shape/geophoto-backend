@@ -1,12 +1,9 @@
 package handler
 
 import (
-	"database/sql"
-	"fmt"
 	"geophoto/backend/database"
 	"geophoto/backend/model"
 	"geophoto/backend/utils/response"
-	"geophoto/backend/utils/sqlbuilder"
 	"github.com/gofiber/fiber/v2"
 	"log"
 	"mime/multipart"
@@ -14,7 +11,7 @@ import (
 	"path/filepath"
 )
 
-var tableNames = database.TableNames
+var mPhoto model.Photo
 
 func CreatePhoto(c *fiber.Ctx) error {
 	var photo model.Photo
@@ -29,16 +26,9 @@ func CreatePhoto(c *fiber.Ctx) error {
 	}
 	photo.FileName = file.Filename
 
-	stmt := sqlbuilder.Insert(
-		&photo,
-		tableNames["Photo"],
-		"coordinates, filename",
-		"Point(:latitude,:longitude), :filename",
-	)
-
 	tx := database.Cursor.MustBegin()
 	defer tx.Rollback()
-	if rows, err := tx.NamedQuery(stmt, &photo); err != nil {
+	if rows, err := photo.Create(tx); err != nil {
 		return err
 	} else {
 		defer rows.Close()
@@ -60,11 +50,9 @@ func CreatePhoto(c *fiber.Ctx) error {
 }
 
 func GetPhoto(c *fiber.Ctx) error {
-	var photo model.Photo
-	uuid := c.Params("uuid")
+	var photo = model.Photo{UUID: c.Params("uuid")}
 
-	stmt := sqlbuilder.Select(&photo, tableNames["Photo"], "WHERE uuid=?")
-	if err := database.Cursor.Get(&photo, stmt, uuid); err != nil {
+	if err := photo.Get(); err != nil {
 		return err
 	}
 
@@ -72,10 +60,9 @@ func GetPhoto(c *fiber.Ctx) error {
 }
 
 func GetAllPhotos(c *fiber.Ctx) error {
-	var photos []model.Photo
+	var photos model.Photos
 
-	stmt := sqlbuilder.Select(&photos, tableNames["Photo"], "ORDER BY id DESC")
-	if err := database.Cursor.Select(&photos, stmt); err != nil {
+	if err := photos.Select(); err != nil {
 		return err
 	}
 
@@ -91,20 +78,17 @@ func UpdatePhoto(c *fiber.Ctx) error {
 
 	file, _ := c.FormFile("file")
 
-	stmt := sqlbuilder.Update(&photo, tableNames["Photo"], "coordinates=Point(:latitude,:longitude)")
 	tx := database.Cursor.MustBegin()
 	defer tx.Rollback()
-	if _, err := tx.NamedExec(stmt, &photo); err != nil {
+	if _, err := photo.Update(tx); err != nil {
 		return err
 	}
 
 	if file != nil {
 		photo.FileName = file.Filename
-		stmt = fmt.Sprintf("UPDATE `%s` SET filename=:filename WHERE uuid=:uuid", tableNames["Photo"])
-		if _, err := tx.NamedExec(stmt, &photo); err != nil {
+		if _, err := photo.UpdateFilename(tx); err != nil {
 			return err
 		}
-		log.Println(stmt)
 		dir := filepath.Join(".", os.Getenv("IMAGE_PATH"), photo.UUID)
 		os.RemoveAll(dir)
 		os.MkdirAll(dir, os.ModePerm)
@@ -115,8 +99,7 @@ func UpdatePhoto(c *fiber.Ctx) error {
 
 	tx.Commit()
 
-	stmt = sqlbuilder.Select(&photo, tableNames["Photo"], "WHERE uuid=?")
-	if err := database.Cursor.Get(&photo, stmt, photo.UUID); err != nil {
+	if err := photo.Get(); err != nil {
 		return err
 	}
 
@@ -124,24 +107,20 @@ func UpdatePhoto(c *fiber.Ctx) error {
 }
 
 func DeletePhoto(c *fiber.Ctx) error {
-	var err error
-	uuid := c.Params("uuid")
+	var photo = model.Photo{UUID: c.Params("uuid")}
 
-	var result sql.Result
-	if result, err = database.Cursor.Exec(
-		fmt.Sprintf("DELETE FROM `%s` WHERE uuid=?", tableNames["Photo"]),
-		uuid,
-	); err != nil {
+	if result, err := photo.Delete(); err != nil {
 		return err
+	} else {
+		if rowsDeleted, err := result.RowsAffected(); rowsDeleted == 0 || err != nil {
+			return response.NotFound(c)
+		}
 	}
 
-	if rowsDeleted, err := result.RowsAffected(); rowsDeleted == 0 || err != nil {
-		return response.NotFound(c)
-	}
 	os.RemoveAll(filepath.Join(
 		".",
 		os.Getenv("IMAGE_PATH"),
-		uuid,
+		photo.UUID,
 	))
 	return response.RecordDeleted(c)
 }

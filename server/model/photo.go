@@ -1,9 +1,14 @@
 package model
 
 import (
+	"database/sql"
+	"fmt"
+	"geophoto/backend/database"
 	"geophoto/backend/utils"
+	"geophoto/backend/utils/sqlbuilder"
 	"geophoto/backend/utils/validate"
 	"github.com/gofiber/fiber/v2"
+	"github.com/jmoiron/sqlx"
 	"time"
 )
 
@@ -18,6 +23,8 @@ type Photo struct {
 	Longitude   float64 `db_cal:"Y(coordinates)" json:"longitude" validate:"required,number"`
 	Timestamp   string  `db:"timestamp" json:"timestamp" validate:"required,datetime=2006-01-02T15:04:05.000Z"`
 }
+
+type Photos []Photo
 
 type ErrorResponse struct {
 	FailedField string
@@ -50,4 +57,60 @@ func (photo *Photo) ScanBody(c *fiber.Ctx) error {
 	photo.Timestamp = utils.TimeToMySQLTimeString(ts)
 
 	return nil
+}
+
+var createStmt = sqlbuilder.Insert(
+	Photo{},
+	database.TableNames["Photo"],
+	"coordinates, filename",
+	"Point(:latitude,:longitude), :filename",
+)
+
+func (photo *Photo) Create(tx *sqlx.Tx) (*sqlx.Rows, error) {
+	return tx.NamedQuery(createStmt, photo)
+}
+
+var getStmt = sqlbuilder.Select(
+	Photo{},
+	database.TableNames["Photo"],
+	"WHERE uuid=?",
+)
+
+func (photo *Photo) Get() error {
+	return database.Cursor.Get(photo, getStmt, photo.UUID)
+}
+
+var selectStmt = sqlbuilder.Select(
+	Photo{},
+	database.TableNames["Photo"],
+	"ORDER BY id DESC",
+)
+
+func (photos *Photos) Select() error {
+	return database.Cursor.Select(photos, selectStmt)
+}
+
+var updateStmt = sqlbuilder.Update(
+	Photo{},
+	database.TableNames["Photo"],
+	"coordinates=Point(:latitude,:longitude)",
+)
+
+func (photo *Photo) Update(tx *sqlx.Tx) (sql.Result, error) {
+	return tx.NamedExec(updateStmt, photo)
+}
+
+var updateFilenameStmt = fmt.Sprintf(
+	"UPDATE `%s` SET filename=:filename WHERE uuid=:uuid",
+	database.TableNames["Photo"],
+)
+
+func (photo *Photo) UpdateFilename(tx *sqlx.Tx) (sql.Result, error) {
+	return tx.NamedExec(updateFilenameStmt, photo)
+}
+
+var deleteStmt = fmt.Sprintf("DELETE FROM `%s` WHERE uuid=?", database.TableNames["Photo"])
+
+func (photo *Photo) Delete() (sql.Result, error) {
+	return database.Cursor.Exec(deleteStmt, photo.UUID)
 }
