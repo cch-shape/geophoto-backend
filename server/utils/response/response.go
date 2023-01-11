@@ -35,7 +35,3 @@ func RecordUpdated(c *fiber.Ctx, data interface{}) error {
 func RecordDeleted(c *fiber.Ctx) error {
 	return Message(c, "Record deleted")
 }
-
-func PlaceHolder(c *fiber.Ctx) error {
-	return Message(c, "In development")
-}
