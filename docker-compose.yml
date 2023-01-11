@@ -9,6 +9,7 @@ services:
       - ${DB_EXTERNAL_PORT}:3306
     volumes:
       - ./sqls:/docker-entrypoint-initdb.d
+      - geophoto-db:/var/lib/mysql
     environment:
       MARIADB_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
       MARIADB_DATABASE: "${DB_NAME}"
@@ -31,3 +32,6 @@ services:
       - ./server:/server
     links:
       - "db:db"
+
+volumes:
+  geophoto-db:
