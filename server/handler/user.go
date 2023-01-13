@@ -9,7 +9,7 @@ import (
 func GetUserSelf(c *fiber.Ctx) error {
 	var user = model.User{}
 
-	if err := user.Get(); err != nil {
+	if err := user.GetSelf(c); err != nil {
 		return err
 	}
 
@@ -23,7 +23,7 @@ func UpdateUserSelf(c *fiber.Ctx) error {
 		return err
 	}
 
-	if err := user.Update(); err != nil {
+	if err := user.UpdateSelf(c); err != nil {
 		return err
 	}
 

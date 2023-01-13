@@ -5,6 +5,7 @@ import (
 	"geophoto/backend/utils/sqlbuilder"
 	"geophoto/backend/utils/validate"
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 // User struct
@@ -13,7 +14,6 @@ type User struct {
 	PhoneNumber  string `db:"phone_number" json:"phone_number" form:"phone_number" validate:"number"`
 	Name         string `db:"name" json:"name"`
 	ThumbnailURL string `db:"thumbnail_url" json:"thumbnail_url" form:"thumbnail_url"`
-	JWT          string
 }
 
 func (user *User) ScanBody(c *fiber.Ctx) error {
@@ -59,7 +59,10 @@ var userGetStmt = sqlbuilder.Select(
 	"WHERE id=?",
 )
 
-func (user *User) Get() error {
+func (user *User) GetSelf(c *fiber.Ctx) error {
+	jwtPayload := c.Locals("user").(*jwt.Token)
+	claims := jwtPayload.Claims.(jwt.MapClaims)
+	user.Id = uint(claims["user_id"].(float64))
 	return database.Cursor.Get(user, userGetStmt, user.Id)
 }
 
@@ -79,12 +82,16 @@ var userUpdateStmt = sqlbuilder.Update(
 	database.TableNames["User"],
 )
 
-func (user *User) Update() error {
-	if _, err := database.Cursor.NamedExec(userUpdateStmt, user); err != nil {
+func (user *User) UpdateSelf(c *fiber.Ctx) error {
+	jwtPayload := c.Locals("user").(*jwt.Token)
+	claims := jwtPayload.Claims.(jwt.MapClaims)
+	user.Id = uint(claims["user_id"].(float64))
+
+	if _, err := database.Cursor.NamedExec(userUpdateStmt, user.Id); err != nil {
 		return err
 	}
 
-	if err := user.Get(); err != nil {
+	if err := user.GetSelf(c); err != nil {
 		return err
 	}
 
