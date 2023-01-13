@@ -107,7 +107,7 @@ func (photo *Photo) ScanBody(c *fiber.Ctx) error {
 }
 
 // Create
-var createStmt = sqlbuilder.Insert(
+var photoCreateStmt = sqlbuilder.Insert(
 	Photo{},
 	database.TableNames["Photo"],
 	"coordinates, filename",
@@ -117,7 +117,7 @@ var createStmt = sqlbuilder.Insert(
 func (photo *Photo) Create(tx *sqlx.Tx, fh *multipart.FileHeader) error {
 	photo.FileName = fh.Filename
 
-	if rows, err := tx.NamedQuery(createStmt, photo); err != nil {
+	if rows, err := tx.NamedQuery(photoCreateStmt, photo); err != nil {
 		return err
 	} else {
 		defer rows.Close()
@@ -137,46 +137,46 @@ func (photo *Photo) Create(tx *sqlx.Tx, fh *multipart.FileHeader) error {
 }
 
 // Get
-var getStmt = sqlbuilder.Select(
+var photoGetStmt = sqlbuilder.Select(
 	Photo{},
 	database.TableNames["Photo"],
 	"WHERE uuid=?",
 )
 
 func (photo *Photo) Get() error {
-	return database.Cursor.Get(photo, getStmt, photo.UUID)
+	return database.Cursor.Get(photo, photoGetStmt, photo.UUID)
 }
 
 // Select
-var selectStmt = sqlbuilder.Select(
+var photoSelectStmt = sqlbuilder.Select(
 	Photo{},
 	database.TableNames["Photo"],
 	"ORDER BY id DESC",
 )
 
 func (photos *Photos) Select() error {
-	return database.Cursor.Select(photos, selectStmt)
+	return database.Cursor.Select(photos, photoSelectStmt)
 }
 
 // Update
-var updateStmt = sqlbuilder.Update(
+var photoUpdateStmt = sqlbuilder.Update(
 	Photo{},
 	database.TableNames["Photo"],
 	"coordinates=Point(:latitude,:longitude)",
 )
 
-var updateFilenameStmt = fmt.Sprintf(
+var photoUpdateFilenameStmt = fmt.Sprintf(
 	"UPDATE `%s` SET filename=:filename WHERE uuid=:uuid",
 	database.TableNames["Photo"],
 )
 
 func (photo *Photo) Update(tx *sqlx.Tx, fh *multipart.FileHeader) error {
-	if _, err := tx.NamedExec(updateStmt, photo); err != nil {
+	if _, err := tx.NamedExec(photoUpdateStmt, photo); err != nil {
 		return err
 	}
 	if fh != nil {
 		photo.FileName = fh.Filename
-		if _, err := tx.NamedExec(updateFilenameStmt, photo); err != nil {
+		if _, err := tx.NamedExec(photoUpdateFilenameStmt, photo); err != nil {
 			return err
 		}
 		photo.deleteFile()
@@ -195,10 +195,10 @@ func (photo *Photo) Update(tx *sqlx.Tx, fh *multipart.FileHeader) error {
 }
 
 // Delete
-var deleteStmt = fmt.Sprintf("DELETE FROM `%s` WHERE uuid=?", database.TableNames["Photo"])
+var photoDeleteStmt = fmt.Sprintf("DELETE FROM `%s` WHERE uuid=?", database.TableNames["Photo"])
 
 func (photo *Photo) Delete() (sql.Result, error) {
-	if result, err := database.Cursor.Exec(deleteStmt, photo.UUID); err != nil {
+	if result, err := database.Cursor.Exec(photoDeleteStmt, photo.UUID); err != nil {
 		return nil, err
 	} else {
 		photo.deleteFile()

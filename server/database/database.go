@@ -9,4 +9,5 @@ var Cursor *sqlx.DB
 
 var TableNames = map[string]string{
 	"Photo": "photo",
+	"User":  "user",
 }

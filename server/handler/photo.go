@@ -8,8 +8,6 @@ import (
 	"mime/multipart"
 )
 
-var mPhoto model.Photo
-
 func CreatePhoto(c *fiber.Ctx) error {
 	var photo model.Photo
 
