@@ -13,19 +13,18 @@ var mPhoto model.Photo
 func CreatePhoto(c *fiber.Ctx) error {
 	var photo model.Photo
 
-	var file *multipart.FileHeader
+	var fh *multipart.FileHeader
 	var err error
-	if file, err = c.FormFile("file"); err != nil {
+	if fh, err = c.FormFile("file"); err != nil {
 		return err
 	}
 	if err := (&photo).ScanBody(c); err != nil {
 		return err
 	}
-	photo.FileName = file.Filename
 
 	tx := database.Cursor.MustBegin()
 	defer tx.Rollback()
-	if err := photo.Create(tx, file); err != nil {
+	if err := photo.Create(tx, fh); err != nil {
 		return err
 	}
 

@@ -6,9 +6,13 @@ import (
 	"geophoto/backend/database"
 	"geophoto/backend/utils"
 	"geophoto/backend/utils/sqlbuilder"
+	"geophoto/backend/utils/validate"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
+	"github.com/nfnt/resize"
 	"github.com/valyala/fasthttp"
+	"image"
+	"image/jpeg"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -17,22 +21,58 @@ import (
 
 type Photo struct {
 	//Id          string  `db:"id" db_prop:"auto" json:"id"`
-	UUID        string  `db:"uuid" db_prop:"key" json:"uuid"`
-	UserId      uint    `db:"user_id" json:"user_id"`
-	FileName    string  `db:"filename" db_prop:"auto" json:"filename"`
-	PhotoUrl    string  `db_cal:"CONCAT('${IMAGE_PATH}/',uuid,'/',filename)" json:"photo_url"`
-	Description *string `db:"description" json:"description"`
-	Latitude    float64 `db_cal:"X(coordinates)" json:"latitude" validate:"required,number"`
-	Longitude   float64 `db_cal:"Y(coordinates)" json:"longitude" validate:"required,number"`
-	Timestamp   string  `db:"timestamp" json:"timestamp" validate:"required,datetime=2006-01-02T15:04:05Z"`
+	UUID           string  `db:"uuid" db_prop:"key" json:"uuid"`
+	UserId         uint    `db:"user_id" json:"user_id"`
+	FileName       string  `db:"filename" db_prop:"auto" json:"filename"`
+	PhotoUrl       string  `db_cal:"CONCAT('${IMAGE_PATH}/',uuid,'/',filename)" json:"photo_url"`
+	ThumbnailUrl1x string  `db_cal:"CONCAT('${IMAGE_PATH}/',uuid,'/1x/',filename)" json:"thumbnail_url_1x"`
+	ThumbnailUrl2x string  `db_cal:"CONCAT('${IMAGE_PATH}/',uuid,'/2x/',filename)" json:"thumbnail_url_2x"`
+	Description    *string `db:"description" json:"description"`
+	Address        *string `db:"address" json:"address"`
+	AddressName    *string `db:"address_name" json:"address_name" form:"address_name"`
+	Latitude       float64 `db_cal:"X(coordinates)" json:"latitude" validate:"required,number"`
+	Longitude      float64 `db_cal:"Y(coordinates)" json:"longitude" validate:"required,number"`
+	Timestamp      string  `db:"timestamp" json:"timestamp" validate:"required,datetime=2006-01-02T15:04:05Z"`
 }
 
 type Photos []Photo
 
-func (photo *Photo) saveFile(file *multipart.FileHeader) error {
+func (photo *Photo) saveFile(fh *multipart.FileHeader) error {
+	// Create directory
 	dir := filepath.Join(".", os.Getenv("IMAGE_PATH"), photo.UUID)
-	os.MkdirAll(dir, os.ModePerm)
-	return fasthttp.SaveMultipartFile(file, filepath.Join(dir, file.Filename))
+	thumbnailDir := filepath.Join(dir, "1x")
+	thumbnailDir2 := filepath.Join(dir, "2x")
+
+	// Save resized image (width=200)
+	file, err := fh.Open()
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	img, _, err := image.Decode(file)
+	if err != nil {
+		return err
+	}
+
+	thumbnail := resize.Resize(512, 0, img, resize.Lanczos3)
+	thumbnail2 := resize.Resize(1024, 0, img, resize.Lanczos3)
+	os.MkdirAll(thumbnailDir, os.ModePerm)
+	os.MkdirAll(thumbnailDir2, os.ModePerm)
+	out, err := os.Create(filepath.Join(thumbnailDir, photo.FileName))
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	out2, err := os.Create(filepath.Join(thumbnailDir2, photo.FileName))
+	if err != nil {
+		return err
+	}
+	defer out2.Close()
+	jpeg.Encode(out, thumbnail, nil)
+	jpeg.Encode(out2, thumbnail2, nil)
+
+	// Save original image
+	return fasthttp.SaveMultipartFile(fh, filepath.Join(dir, photo.FileName))
 }
 
 func (photo *Photo) deleteFile() error {
@@ -51,10 +91,10 @@ func (photo *Photo) ScanBody(c *fiber.Ctx) error {
 	photo.UserId = 0 /* Read user_id from jwt, to be completed */
 
 	// Validate data
-	//if errors := validate.Struct(photo); errors != nil {
-	//	c.Locals("reason", errors)
-	//	return fiber.NewError(400, "validation failed")
-	//}
+	if errors := validate.Struct(photo); errors != nil {
+		c.Locals("reason", errors)
+		return fiber.NewError(400, "validation failed")
+	}
 
 	// Transform data
 	var ts *time.Time
@@ -74,7 +114,9 @@ var createStmt = sqlbuilder.Insert(
 	"Point(:latitude,:longitude), :filename",
 )
 
-func (photo *Photo) Create(tx *sqlx.Tx, file *multipart.FileHeader) error {
+func (photo *Photo) Create(tx *sqlx.Tx, fh *multipart.FileHeader) error {
+	photo.FileName = fh.Filename
+
 	if rows, err := tx.NamedQuery(createStmt, photo); err != nil {
 		return err
 	} else {
@@ -85,7 +127,7 @@ func (photo *Photo) Create(tx *sqlx.Tx, file *multipart.FileHeader) error {
 		}
 	}
 
-	if err := photo.saveFile(file); err != nil {
+	if err := photo.saveFile(fh); err != nil {
 		return err
 	}
 
@@ -128,17 +170,17 @@ var updateFilenameStmt = fmt.Sprintf(
 	database.TableNames["Photo"],
 )
 
-func (photo *Photo) Update(tx *sqlx.Tx, file *multipart.FileHeader) error {
+func (photo *Photo) Update(tx *sqlx.Tx, fh *multipart.FileHeader) error {
 	if _, err := tx.NamedExec(updateStmt, photo); err != nil {
 		return err
 	}
-	if file != nil {
-		photo.FileName = file.Filename
+	if fh != nil {
+		photo.FileName = fh.Filename
 		if _, err := tx.NamedExec(updateFilenameStmt, photo); err != nil {
 			return err
 		}
 		photo.deleteFile()
-		if err := photo.saveFile(file); err != nil {
+		if err := photo.saveFile(fh); err != nil {
 			return err
 		}
 	}
