@@ -3,6 +3,7 @@ package handler
 import (
 	"geophoto/backend/database"
 	"geophoto/backend/model"
+	"geophoto/backend/utils"
 	"geophoto/backend/utils/response"
 	"github.com/gofiber/fiber/v2"
 	"mime/multipart"
@@ -30,7 +31,7 @@ func CreatePhoto(c *fiber.Ctx) error {
 }
 
 func GetPhoto(c *fiber.Ctx) error {
-	var photo = model.Photo{UUID: c.Params("uuid")}
+	var photo = model.Photo{UUID: c.Params("uuid"), UserId: *utils.ExtractJwtUserId(c)}
 
 	if err := photo.Get(); err != nil {
 		return err
@@ -42,33 +43,33 @@ func GetPhoto(c *fiber.Ctx) error {
 func GetAllPhotos(c *fiber.Ctx) error {
 	var photos model.Photos
 
-	if err := photos.Select(); err != nil {
+	if err := photos.Select(*utils.ExtractJwtUserId(c)); err != nil {
 		return err
 	}
 
 	return response.Data(c, &photos)
 }
 
-func UpdatePhoto(c *fiber.Ctx) error {
-	var photo model.Photo
-
-	if err := photo.ScanBody(c); err != nil {
-		return err
-	}
-
-	file, _ := c.FormFile("file")
-
-	tx := database.Cursor.MustBegin()
-	defer tx.Rollback()
-	if err := photo.Update(tx, file); err != nil {
-		return err
-	}
-
-	return response.RecordUpdated(c, photo)
-}
+//func UpdatePhoto(c *fiber.Ctx) error {
+//	var photo model.Photo
+//
+//	if err := photo.ScanBody(c); err != nil {
+//		return err
+//	}
+//
+//	file, _ := c.FormFile("file")
+//
+//	tx := database.Cursor.MustBegin()
+//	defer tx.Rollback()
+//	if err := photo.Update(tx, file); err != nil {
+//		return err
+//	}
+//
+//	return response.RecordUpdated(c, photo)
+//}
 
 func DeletePhoto(c *fiber.Ctx) error {
-	var photo = model.Photo{UUID: c.Params("uuid")}
+	var photo = model.Photo{UUID: c.Params("uuid"), UserId: *utils.ExtractJwtUserId(c)}
 
 	if result, err := photo.Delete(); err != nil {
 		return err

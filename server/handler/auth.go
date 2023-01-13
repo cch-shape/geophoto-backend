@@ -27,40 +27,39 @@ func randInt(min int, max int) int {
 }
 
 func Login(c *fiber.Ctx) error {
-	type LoginInput struct {
-		PhoneNumber      string `form:"phone_number" validate:"required,number"`
-		VerificationCode string `form:"verification_code" validate:"required"`
-	}
+	payload := struct {
+		PhoneNumber      string `json:"phone_number" form:"phone_number" validate:"required,number"`
+		VerificationCode string `json:"verification_code" form:"verification_code" validate:"required"`
+	}{}
 	type VerificationCode struct {
 		Id         uint   `db:"id"`
 		HashedCode string `db:"hashed_code"`
 		IsVoided   bool   `db:"is_voided"`
 	}
 
-	var input LoginInput
-	if err := c.BodyParser(&input); err != nil {
+	if err := c.BodyParser(&payload); err != nil {
 		return response.InvalidInput(c, "invalid parameter")
 	}
 
-	if errors := validate.Struct(input); errors != nil {
+	if errors := validate.Struct(payload); errors != nil {
 		c.Locals("reason", errors)
 		return fiber.NewError(400, "validation failed")
 	}
 
 	var vc = VerificationCode{}
 	q := "SELECT id, hashed_code, is_voided from verification_code WHERE phone_number=? ORDER BY id DESC"
-	if err := database.Cursor.Get(&vc, q, input.PhoneNumber); err != nil {
+	if err := database.Cursor.Get(&vc, q, payload.PhoneNumber); err != nil {
 		return response.InvalidInput(c, "no available verification code, POST /api/ask/verificatoin to get one")
 	}
 
-	if vc.IsVoided || !checkHash(input.VerificationCode, vc.HashedCode) {
+	if vc.IsVoided || !checkHash(payload.VerificationCode, vc.HashedCode) {
 		return response.InvalidInput(c, "invalid verification code")
 	}
 
 	// Passed Verification
 
 	// Get User Data
-	user := model.User{PhoneNumber: input.PhoneNumber}
+	user := model.User{PhoneNumber: payload.PhoneNumber}
 	if err := user.GetByPhoneNumber(); err != nil {
 		// Create user if not exist
 		if err := user.Create(); err != nil {

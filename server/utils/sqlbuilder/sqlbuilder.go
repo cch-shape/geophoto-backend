@@ -111,7 +111,6 @@ func Update(model interface{}, tableName string, attachStmt ...string) string {
 	for t.Kind() == reflect.Slice || t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
-	// UPDATE t SET A=a, B=b WHERE k=k
 	key_db := "id"
 	key_json := "id"
 	var colBuilder strings.Builder
@@ -147,7 +146,6 @@ func Update(model interface{}, tableName string, attachStmt ...string) string {
 	stmt.WriteString("=:")
 	stmt.WriteString(key_json)
 	if len(attachStmt) > 1 {
-		stmt.WriteString(delim)
 		stmt.WriteString(attachStmt[1])
 	}
 

@@ -88,7 +88,7 @@ func (photo *Photo) ScanBody(c *fiber.Ctx) error {
 	if uuid := c.Params("uuid"); len(uuid) != 0 {
 		photo.UUID = uuid
 	}
-	photo.UserId = 0 /* Read user_id from jwt, to be completed */
+	photo.UserId = *utils.ExtractJwtUserId(c)
 
 	// Validate data
 	if errors := validate.Struct(photo); errors != nil {
@@ -140,22 +140,22 @@ func (photo *Photo) Create(tx *sqlx.Tx, fh *multipart.FileHeader) error {
 var photoGetStmt = sqlbuilder.Select(
 	Photo{},
 	database.TableNames["Photo"],
-	"WHERE uuid=?",
+	"WHERE uuid=? AND user_id=?",
 )
 
 func (photo *Photo) Get() error {
-	return database.Cursor.Get(photo, photoGetStmt, photo.UUID)
+	return database.Cursor.Get(photo, photoGetStmt, photo.UUID, photo.UserId)
 }
 
 // Select
 var photoSelectStmt = sqlbuilder.Select(
 	Photo{},
 	database.TableNames["Photo"],
-	"ORDER BY id DESC",
+	"WHERE user_id=? ORDER BY id DESC",
 )
 
-func (photos *Photos) Select() error {
-	return database.Cursor.Select(photos, photoSelectStmt)
+func (photos *Photos) Select(userId uint) error {
+	return database.Cursor.Select(photos, photoSelectStmt, userId)
 }
 
 // Update
@@ -163,42 +163,43 @@ var photoUpdateStmt = sqlbuilder.Update(
 	Photo{},
 	database.TableNames["Photo"],
 	"coordinates=Point(:latitude,:longitude)",
+	" AND user_id=:user_id",
 )
 
 var photoUpdateFilenameStmt = fmt.Sprintf(
-	"UPDATE `%s` SET filename=:filename WHERE uuid=:uuid",
+	"UPDATE `%s` SET filename=:filename WHERE uuid=:uuid AND user_id=:user_id",
 	database.TableNames["Photo"],
 )
 
-func (photo *Photo) Update(tx *sqlx.Tx, fh *multipart.FileHeader) error {
-	if _, err := tx.NamedExec(photoUpdateStmt, photo); err != nil {
-		return err
-	}
-	if fh != nil {
-		photo.FileName = fh.Filename
-		if _, err := tx.NamedExec(photoUpdateFilenameStmt, photo); err != nil {
-			return err
-		}
-		photo.deleteFile()
-		if err := photo.saveFile(fh); err != nil {
-			return err
-		}
-	}
-
-	tx.Commit()
-
-	if err := photo.Get(); err != nil {
-		return err
-	}
-
-	return nil
-}
+//func (photo *Photo) Update(tx *sqlx.Tx, fh *multipart.FileHeader) error {
+//	if _, err := tx.NamedExec(photoUpdateStmt, photo); err != nil {
+//		return err
+//	}
+//	if fh != nil {
+//		photo.FileName = fh.Filename
+//		if _, err := tx.NamedExec(photoUpdateFilenameStmt, photo); err != nil {
+//			return err
+//		}
+//		photo.deleteFile()
+//		if err := photo.saveFile(fh); err != nil {
+//			return err
+//		}
+//	}
+//
+//	tx.Commit()
+//
+//	if err := photo.Get(); err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}
 
 // Delete
-var photoDeleteStmt = fmt.Sprintf("DELETE FROM `%s` WHERE uuid=?", database.TableNames["Photo"])
+var photoDeleteStmt = fmt.Sprintf("DELETE FROM `%s` WHERE uuid=? AND user_id=?", database.TableNames["Photo"])
 
 func (photo *Photo) Delete() (sql.Result, error) {
-	if result, err := database.Cursor.Exec(photoDeleteStmt, photo.UUID); err != nil {
+	if result, err := database.Cursor.Exec(photoDeleteStmt, photo.UUID, photo.UserId); err != nil {
 		return nil, err
 	} else {
 		photo.deleteFile()

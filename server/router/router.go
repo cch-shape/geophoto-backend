@@ -29,7 +29,7 @@ func SetupRoutes(app *fiber.App) {
 	photo.Post("/", middleware.Protected(), handler.CreatePhoto)
 	photo.Get("/", middleware.Protected(), handler.GetAllPhotos)
 	photo.Get("/:uuid", middleware.Protected(), handler.GetPhoto)
-	photo.Put("/:uuid", middleware.Protected(), handler.UpdatePhoto)
+	//photo.Put("/:uuid", middleware.Protected(), handler.UpdatePhoto)
 	photo.Delete("/:uuid", middleware.Protected(), handler.DeletePhoto)
 
 	// user
