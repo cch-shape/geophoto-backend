@@ -28,10 +28,10 @@ func Struct(model interface{}) []*map[string]interface{} {
 			el := map[string]interface{}{
 				"failed_field": err.Field(),
 				"tag":          err.Tag(),
+				"actual":       err.Value(),
 			}
 			if len(err.Param()) != 0 {
 				el["expected"] = err.Param()
-				el["actual"] = err.Value()
 			}
 			errors = append(errors, &el)
 		}

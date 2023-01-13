@@ -5,7 +5,7 @@ import (
 )
 
 func ISO8601StringToTime(timestr string) (*time.Time, error) {
-	layout := "2006-01-02T15:04:05.000Z"
+	layout := "2006-01-02T15:04:05Z"
 	if t, err := time.Parse(layout, timestr); err != nil {
 		return nil, err
 	} else {

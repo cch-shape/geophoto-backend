@@ -17,6 +17,7 @@ func main() {
 		JSONEncoder:  json.Marshal,
 		JSONDecoder:  json.Unmarshal,
 		ErrorHandler: middleware.ErrorHandler,
+		BodyLimit:    20 * 1024 * 1024,
 	})
 	app.Use(cors.New())
 

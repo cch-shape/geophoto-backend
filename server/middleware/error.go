@@ -12,7 +12,8 @@ func ErrorHandler(c *fiber.Ctx, err error) error {
 		return response.NotFound(c)
 	} else if err.Error() == "validation failed" {
 		return response.InvalidInput(c, c.Locals("reason"))
-	} else if err.Error() == "there is no uploaded file associated with the given key" {
+	} else if err.Error() == "there is no uploaded file associated with the given key" ||
+		err.Error() == "request has no multipart/form-data Content-Type" {
 		return response.InvalidInput(c, "file is required")
 	} else {
 		var e *fiber.Error

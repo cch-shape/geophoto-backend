@@ -6,7 +6,6 @@ import (
 	"geophoto/backend/database"
 	"geophoto/backend/utils"
 	"geophoto/backend/utils/sqlbuilder"
-	"geophoto/backend/utils/validate"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/valyala/fasthttp"
@@ -22,10 +21,10 @@ type Photo struct {
 	UserId      uint    `db:"user_id" json:"user_id"`
 	FileName    string  `db:"filename" db_prop:"auto" json:"filename"`
 	PhotoUrl    string  `db_cal:"CONCAT('${IMAGE_PATH}/',uuid,'/',filename)" json:"photo_url"`
-	Description *string `db:"description" json:"description" validate:"len=300"`
+	Description *string `db:"description" json:"description"`
 	Latitude    float64 `db_cal:"X(coordinates)" json:"latitude" validate:"required,number"`
 	Longitude   float64 `db_cal:"Y(coordinates)" json:"longitude" validate:"required,number"`
-	Timestamp   string  `db:"timestamp" json:"timestamp" validate:"required,datetime=2006-01-02T15:04:05.000Z"`
+	Timestamp   string  `db:"timestamp" json:"timestamp" validate:"required,datetime=2006-01-02T15:04:05Z"`
 }
 
 type Photos []Photo
@@ -52,10 +51,10 @@ func (photo *Photo) ScanBody(c *fiber.Ctx) error {
 	photo.UserId = 0 /* Read user_id from jwt, to be completed */
 
 	// Validate data
-	if errors := validate.Struct(photo); errors != nil {
-		c.Locals("reason", errors)
-		return fiber.NewError(400, "validation failed")
-	}
+	//if errors := validate.Struct(photo); errors != nil {
+	//	c.Locals("reason", errors)
+	//	return fiber.NewError(400, "validation failed")
+	//}
 
 	// Transform data
 	var ts *time.Time
